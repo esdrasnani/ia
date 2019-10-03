@@ -14,13 +14,11 @@ creator.create("Individual", list, fitness=creator.FitnessMin)
 
 toolbox = base.Toolbox()
 toolbox.register("attr_int", random.sample, range(10), 10)
-toolbox.register("individual", tools.initRepeat, creator.Individual, 
-    toolbox.attr_int, n=1)
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_int, n=1)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 aux = toolbox.population(10)
-
-print(aux)
+print(toolbox.individual)
 
 for x in aux:
     recursos = x[0]
@@ -73,12 +71,13 @@ for i in range(len(notas_recursos)):
 
 # Função de Avaliação
 def evalOneMin(individual):
-    s = 0;
-    menor = 1000;
+    s = 0
+    menor = 1000
     for i in range(len(vet)):
         for j in range(len(recurso_projeto)):
             if( menor < recurso_projeto[j][i]):
                 menor = recurso_projeto[j][i]
+                
         
         s = menor
         for j in range(len(recurso_projeto)):
