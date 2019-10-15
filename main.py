@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import random
 import numpy as np
+import pickle
+import matplotlib.pyplot as plt
 
 from deap import base
 from deap import creator
@@ -9,16 +11,23 @@ from deap import algorithms
 
 vet = [2, 8, 1, 6, 5, 10, 4, 3, 9, 7]
 
+
+random.seed(0)
 creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMin)
 
+def random_no_repeat1(numbers, count):
+    number_list = list(numbers)
+    random.shuffle(number_list)
+    return number_list[:count]
+
 
 toolbox = base.Toolbox()
-toolbox.register("attr_int", random.sample, range(10), 10)
-toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_int, n=10)
+toolbox.register("attr_int", random_no_repeat1, range(10), 10)
+toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.attr_int)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-
-toolbox.population(10)
+print(toolbox.individual())
+toolbox.population(100)
 
 
 notas_recursos = [
@@ -27,11 +36,11 @@ notas_recursos = [
         [7,	3,	4,	1,	1,	6],
         [5,	4,	2,	3,	1,	7],
         [4,	5,	8,	1,	1,	7],
-        [3,	7,	0,	1,	2,	5],
-        [0,	1,	4,	1,	8,	1],
-        [0,	9,	8,	8,	6,	2],
-        [1,	1,	8,	6,	0,	9],
-        [3,	1,	1,	1,	0,	2]]
+        [3,	7,	1,	1,	2,	5],
+        [1,	1,	4,	1,	8,	1],
+        [1,	9,	8,	8,	6,	2],
+        [1,	1,	8,	6,	1,	9],
+        [3,	1,	1,	1,	1,	2]]
 
 #notas coluna:
 '''
@@ -44,143 +53,95 @@ notas_recursos = [
 '''
 
 projetos = [
-        [1, 0,	10],
-        [2,	3,	9],
-        [1,	4,	8],
-        [3,	1,	7],
-        [3,	2,	6],
-        [3,	5,	1],
-        [2,	1,	2],
-        [2,	3,	3],
-        [3,	2,	4],
-        [1,	4,	5]]
-
-
-recurso_projeto = np.zeros((10,10))
-for i in range(len(notas_recursos)):
-    for j in range(len(projetos)):
-        aux = projetos[j][1]
-        recurso_projeto[i][j] = ((notas_recursos[i][aux]/projetos[j][2])*projetos[j][0])
-
+        [0,	10],
+        [3,	9],
+        [4,	8],
+        [1,	7],
+        [2,	6],
+        [5,	1],
+        [1,	2],
+        [3,	3],
+        [2,	4],
+        [4,	5]]
 
 
 # Função de Avaliação
 def evalOneMin(individual):
     s = 0
-    menor = 1000
-    pos_res = 0
-    for i in range(len(vet)):
-        for j in range(len(projetos)):
-            if( menor > recurso_projeto[j][i]):
-                menor = recurso_projeto[j][i]
-                pos_res = i
+    for i in range(len(individual)-1):
+        ind = individual[i]
+        tec_proj = projetos[i][0]
+        s += notas_recursos[ind][tec_proj]/projetos[i][1]
         
-        if (individual[i] == pos_res):
-            s = s+1
-    
     return s,
 
-ind1 = toolbox.individual()
-ind1.fitness.values = evalOneMin(ind1)
-print(ind1.fitness.valid)
-print(ind1.fitness.valid)
-print(ind1.fitness)
-print(ind1)
+
 toolbox.register("evaluate", evalOneMin)
-toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutUniformInt, low=0, up=10, indpb=0.05)
+toolbox.register("mate", tools.cxPartialyMatched)
+toolbox.register("mutate", tools.mutUniformInt, low=0, up=9, indpb=0.01)
 toolbox.register("select", tools.selTournament, tournsize=3)
+
+def print_ind(individual):
+    print('Individuo:' + str(individual))
+
+#Plotar Gráfico
+def plot_log(logbook):
+    gen = logbook.select("gen")
+    min = logbook.select("min")
+    avg = logbook.select("avg")
+    max = logbook.select("max")
+
+    import matplotlib.pyplot as plt
+
+    fig, ax1 = plt.subplots()
+    line1 = ax1.plot(gen, min, "b-", label="Minimum Fitness")
+    ax1.set_xlabel("Generation")
+    ax1.set_ylabel("Fitness", color="b")
+    for tl in ax1.get_yticklabels():
+        tl.set_color("b")
+
+    ax2 = ax1.twinx()
+    line2 = ax2.plot(gen, avg, "g-", label="Average Fitness")
+    for tl in ax2.get_yticklabels():
+        tl.set_color("g")
+
+    ax3 = ax1.twinx()
+    line3 = ax3.plot(gen, max, "y-", label="Maximum Fitness")
+    ax3.set_ylabel("Size")
+    for tl in ax3.get_yticklabels():
+        tl.set_color("y")
+
+    lns = line1 + line2 + line3
+    labs = [l.get_label() for l in lns]
+    ax1.legend(lns, labs, loc="center right")
+
+    plt.show()
+
+
 
 def main():
     random.seed(64)
 
-    pop = toolbox.population(n=300)
-    CXPB, MUTPB = 0.5, 0.2
+    pop = toolbox.population(n=150)
+    CXPB, MUTPB, NGEN = 0.5, 0.2, 1000
+
+    #stats a serem guardados
+    stats = tools.Statistics(key=lambda ind: ind.fitness.values)
+    stats.register("std", np.std)
+    stats.register("min", np.min)
+    stats.register("avg", np.mean)
+    stats.register("max", np.max)
     
-    fitnesses = list(map(toolbox.evaluate, pop))
-    for ind, fit in zip(pop, fitnesses):
-        ind.fitness.values = fit
+
+    pop, logbook = algorithms.eaSimple(pop, toolbox, CXPB, MUTPB, NGEN, stats=stats)
     
-    fits = [ind.fitness.values[0] for ind in pop]
-    g = 0
-    while g < 1000:
-        g = g + 1
-        # Select and clone the next generation individuals
-        offspring = map(toolbox.clone, toolbox.select(pop, len(pop)))
-        # Apply crossover and mutation on the offspring
-        offspring = algorithms.varAnd(offspring, toolbox, CXPB, MUTPB)
+    #Seleciona o melhor individuo da populacao resultante
+    best_ind = tools.selSPEA2(pop, 1)
 
-        # Evaluate the individuals with an invalid fitness
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
-        for ind, fit in zip(invalid_ind, fitnesses):
-            ind.fitness.values = fit
+    #Imprime as infromações do melhor individuo
+    print_ind(best_ind[0])
 
-        # The population is entirely replaced by the offspring
-        pop[:] = offspring
-
-
-        fits = [ind.fitness.values[0] for ind in pop]
-            
-        print(" - Melhor: %d" % min(fits))
-        print(" - Pior  : %d" % max(fits))
-        print(" - Média : %d" % (sum(fits) / 300))
-        
-        frase_ag = []
-        best_ind = tools.selBest(pop, 1)[0]
-        for i in range(len(vet)):
-            frase_ag.append(best_ind[i])
-                
-        print("")
-        print(" - Target: ", vet)
-        print(" - AG    : ", frase_ag)
-        print("")
-"""
-    while g < 1000 and min(fits) > 0:
-
-        g = g + 1
-        print("================")
-        print("* GERAÇÃO: %i" % g)
-        print("================")
-        
-        offspring = toolbox.select(pop, len(pop))
-        offspring = list(map(toolbox.clone, offspring))
-         
-        for child1, child2 in zip(offspring[::2], offspring[1::2]):
-            if random.random() < CXPB:
-                toolbox.mate(child1, child2)
-
-                del child1.fitness.values
-                del child2.fitness.values
-
-        for mutant in offspring:
-            if random.random() < MUTPB:
-                toolbox.mutate(mutant)
-                del mutant.fitness.values
-    
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        fitnesses = map(toolbox.evaluate, invalid_ind)
-        for ind, fit in zip(invalid_ind, fitnesses):
-            ind.fitness.values = fit
-        
-        pop[:] = offspring
-        
-        fits = [ind.fitness.values[0] for ind in pop]
-        
-        print(" - Melhor: %d" % min(fits))
-        print(" - Pior  : %d" % max(fits))
-        print(" - Média : %d" % (sum(fits) / 300))
-        
-        frase_ag = []
-        best_ind = tools.selBest(pop, 1)[0]
-        for i in range(len(vet)):
-            frase_ag += chr(best_ind[i])
-            
-        print("")
-        print(" - Target: %d" % vet)
-        print(" - AG    : %d" % frase_ag)
-        print("")
-"""
-
+    #Plota o Gráfico
+    plot_log(logbook)
 if __name__ == "__main__":
     main()
