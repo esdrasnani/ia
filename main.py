@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
 import random
 import numpy as np
-import pickle
-import matplotlib.pyplot as plt
 
 from deap import base
 from deap import creator
 from deap import tools
 from deap import algorithms
 
-vet = [2, 8, 1, 6, 5, 10, 4, 3, 9, 7]
+vet = [1, 7, 0, 5, 4, 9, 3, 2, 8, 6]
 
 
 random.seed(0)
@@ -53,16 +51,16 @@ notas_recursos = [
 '''
 
 projetos = [
-        [0,	10],
-        [3,	9],
-        [4,	8],
-        [1,	7],
-        [2,	6],
-        [5,	1],
-        [1,	2],
-        [3,	3],
-        [2,	4],
-        [4,	5]]
+        [0,	10, 1],
+        [3,	9, 2],
+        [4,	8, 1],
+        [1,	7, 3],
+        [2,	6, 3],
+        [5,	1, 3],
+        [1,	2, 2],
+        [3,	3, 2],
+        [2,	4, 3],
+        [4,	5, 1]]
 
 
 # Função de Avaliação
@@ -71,7 +69,7 @@ def evalOneMin(individual):
     for i in range(len(individual)-1):
         ind = individual[i]
         tec_proj = projetos[i][0]
-        s += notas_recursos[ind][tec_proj]/projetos[i][1]
+        s += (notas_recursos[ind][tec_proj]/projetos[i][1])*projetos[i][2]
         
     return s,
 
@@ -122,8 +120,8 @@ def plot_log(logbook):
 def main():
     random.seed(64)
 
-    pop = toolbox.population(n=150)
-    CXPB, MUTPB, NGEN = 0.5, 0.2, 1000
+    pop = toolbox.population(n=100)
+    CXPB, MUTPB, NGEN = 0.5, 0.2, 300
 
     #stats a serem guardados
     stats = tools.Statistics(key=lambda ind: ind.fitness.values)
